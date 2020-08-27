@@ -1,0 +1,8 @@
+include assets/enemies.png
+include assets/heroes.png
+include assets/map_entities.png
+include assets/tile_screen.png
+include assets/tile.png
+include assets/palette.json
+include assets/tutorial.json
+include game/*.py

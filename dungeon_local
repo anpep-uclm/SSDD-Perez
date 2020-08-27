@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# pylint: disable=W1203
+
+'''
+    ICE Gauntlet LOCAL GAME
+'''
+
+import sys
+import atexit
+import logging
+import argparse
+
+import game
+import game.common
+import game.pyxeltools
+import game.tilescreen
+import game.orchestration
+
+
+EXIT_OK = 0
+BAD_COMMAND_LINE = 1
+
+DEFAULT_ROOM = 'tutorial.json'
+DEFAULT_HERO = game.common.HEROES[0]
+
+
+@atexit.register
+# pylint: disable=W0613
+def bye(*args, **kwargs):
+    '''Exit callback, use for shoutdown'''
+    print('Thanks for playing!')
+# pylint: enable=W0613
+
+def parse_commandline():
+    '''Parse and check commandline'''
+    parser = argparse.ArgumentParser('IceDungeon Local Game')
+    parser.add_argument('LEVEL', nargs='+', default=[DEFAULT_ROOM], help='List of levels')
+    parser.add_argument(
+        '-p', '--player', default=DEFAULT_HERO, choices=game.common.HEROES,
+        dest='hero', help='Hero to play with'
+    )
+    options = parser.parse_args()
+
+    for level_file in options.LEVEL:
+        if not game.assets.search(level_file):
+            logging.error(f'Level "{level_file}" not found!')
+            return None
+    return options
+
+
+def main():
+    '''Start game according to commandline'''
+    user_options = parse_commandline()
+    if not user_options:
+        return BAD_COMMAND_LINE
+
+    game.pyxeltools.initialize()
+    gauntlet = game.Game(user_options.hero)
+    gauntlet.add_state(
+        game.tilescreen.TileScreen(next_state='level_1'), 'tile_screen', switch_to_state=True
+    )
+
+    room_count = 1
+    for room_file in user_options.LEVEL:
+        room = game.level.Level(next_state='stats_level_{}'.format(room_count))
+        gauntlet.add_state(room, 'level_{}'.format(room_count))
+        room.orchestrator = game.orchestration.RoomOrchestration(room_file)
+        gauntlet.add_state(
+            game.stats.StatsScreen(next_state='level_{}'.format(room_count + 1)),
+            'stats_level_{}'.format(room_count)
+        )
+        room_count += 1
+    room.next_state = 'tile_screen'
+
+    gauntlet.start()
+
+    return EXIT_OK
+
+
+if __name__ == '__main__':
+    sys.exit(main())

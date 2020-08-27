@@ -1,0 +1,16 @@
+
+	ICE Gauntlet Assets License
+	===========================
+	
+Gauntlet is an original game developed by Atari Games.
+
+ICE Gauntlet is released for educational purposes only
+and under the terms of the GPLv3.
+
+Original artwork used in this port is freely available on
+internet and licensed by respective owners.
+
+Sources:
+
+  http://eab.abime.net/showthread.php?t=50981
+  https://steamcommunity.com/sharedfiles/filedetails/?id=1683057453
