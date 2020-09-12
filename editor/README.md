@@ -24,7 +24,7 @@ Y ahora abrimos el fichero *my_map.tmx* con *Tiled* para crear el mapa que desee
 |Inicio valkiria|![valkyrie spawn](doc/valkyrie_spawn.png)|
 |Inicio mago|![wizard spawn](doc/wizard_spawn.png)|
 |Inicio elfo|![elf spawn](doc/elf_spawn.png)|
-|Salida|![exit](doc/exit)|
+|Salida|![exit](doc/exit.png)|
 |Teletransportador|![teleport](doc/teleport.png)|
 |Llave|![key](doc/key.png)|
 |Tesoro|![treasure](doc/treasure.png)|
