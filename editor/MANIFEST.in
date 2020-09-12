@@ -1,0 +1,6 @@
+include map_files.png
+include map_tiles.tsx
+include schematic2tileid.json
+include template.tmx
+include tiled.py
+include tiled2json

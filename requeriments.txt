@@ -1,3 +1,2 @@
 Pillow==7.2.0
 pyxel==1.4.1
-xmltodict==0.12.0

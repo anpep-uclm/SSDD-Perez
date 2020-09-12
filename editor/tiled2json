@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+
+'''
+Convert a Tiled TMX tilemap file to json file
+'''
+
+import sys
+import json
+import logging
+import os.path
+import argparse
+
+from tiled import load_tilemap
+
+
+EXIT_OK = 0
+EXIT_BAD_COMMANDLINE = 1
+EXIT_BAD_SRC_FILE = 2
+
+_NULL_TILE_ = 255
+
+
+def new_map(width, height, fill):
+    '''Create new map filled with a given tile ID'''
+    return [[fill for x in range(width)] for y in range(height)]
+
+
+def autocrop_size(tilemap, null_tiles=[]):
+    '''Auto-crop map to contents. null_tiles is a list of null (or ignored) tiles'''
+    if not isinstance(null_tiles, (tuple, list)):
+        null_tiles = [null_tiles]
+    width = height = 0
+    x = y = 0
+    for row in tilemap:
+        x = 0
+        for tile in row:
+            if tile not in null_tiles:
+                width = max(width, x)
+                height = max(height, y)
+            x += 1
+        y += 1
+    return (width + 1, height + 1)
+
+
+def main():
+    user_options = parse_commandline()
+    if not user_options:
+        return EXIT_BAD_COMMANDLINE
+
+    # Load input files
+    tmx_map = load_tilemap(user_options.tmx_file)
+    map_name = tmx_map.properties.get('room_name', user_options.name)
+    logging.info('Map name: {}'.format(map_name))
+    logging.info('Original map size: {}x{} tiles'.format(tmx_map.width, tmx_map.height))
+
+    # Create empty map
+    destination_map = new_map(tmx_map.width, tmx_map.height, user_options.null[0])
+
+    if user_options.translation:
+        logging.info('Translating IDs...')
+        with open(user_options.translation, 'r') as contents:
+            try:
+                translation = json.load(contents)
+            except Exception as error:
+                logging.critical(
+                    'ERROR: invalid json "{}": {}'.format(user_options.translation, error)
+                )
+                return EXIT_BAD_SRC_FILE
+        for x in range(tmx_map.width):
+            for y in range(tmx_map.height):
+                original_tile = tmx_map.tile_at(x, y)
+                if original_tile is None:
+                    continue
+                original_tile = str(original_tile)
+                if original_tile not in translation:
+                    logging.error(
+                        'translation does not have definition for tile #{} at ({}, {})'.format(
+                            original_tile, x, y
+                    ))
+                    if not user_options.force:
+                        return EXIT_BAD_SRC_FILE
+                try:
+                    destination_tile = int(translation.get(original_tile, user_options.null))
+                except ValueError:
+                    logging.error(
+                        'translation defines invalid ID for tile #{}'.format(original_tile)
+                    )
+                    if user_options.force:
+                        destination_tile = user_options.null
+                    else:
+                        return EXIT_BAD_SRC_FILE
+                destination_map[y][x] = destination_tile
+
+    if user_options.autocrop:
+        logging.info('Autocropping...')
+        use_size = autocrop_size(destination_map, null_tiles=user_options.null)
+        logging.info('Output map size: {}x{} tiles'.format(*use_size))
+    else:
+        use_size = (tmx_map.width, tmx_map.height)
+
+    logging.info('Creating output data...')
+    output_map = []
+    for y in range(use_size[1]):
+        row = []
+        for x in range(use_size[0]):
+            row.append(destination_map[y][x])
+        output_map.append(row)
+    output_map = {
+        'room': map_name,
+        'data': output_map
+    }
+    output_map = json.dumps(output_map, sort_keys=True)
+    if not user_options.output:
+        print(output_map, flush=True)
+    else:
+        with open(user_options.output, 'w') as contents:
+            contents.write(output_map)
+
+    return EXIT_OK
+
+
+def parse_commandline():
+    '''Parse and check command line'''
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('tmx_file', help='File to convert')
+    parser.add_argument('-n', '--null-blocks', nargs='+', action='store', default=[_NULL_TILE_],
+                        help='Set null tile-id. Default: %(default)s.', dest='null')
+    parser.add_argument('-t', '--translation', action='store', default=None,
+                        help='Use tile_id translation according to JSON file', dest='translation')
+    parser.add_argument('--force', action='store_true', default=False,
+                        help='On recoverable errors, continue', dest='force')
+    parser.add_argument('-f', '--full-map', action='store_false', default=True,
+                        help='Do not adjust map size to contents, use max size', dest='autocrop')
+    parser.add_argument('--name', action='store', default='unnamed', dest='name',
+                        help='If map does not have a name attribute, use this name')
+    parser.add_argument('-o', '--output', action='store', default=None,
+                        help='Create JSON file instead of stdout dump', dest='output')
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.tmx_file):
+        logging.critical('File "{}" not found!'.format(args.tmx_file))
+        return None
+
+    if args.translation:
+        if not os.path.exists(args.translation):
+            logging.critical('Translation file "{}" not found!'.format(args.translation))
+            return None
+
+    nulls = []
+    for null in args.null:
+        try:
+            nulls.append(int(null))
+        except ValueError:
+            logging.error('Invalid null block ID: {} (it should be an integer value)'.format(null))
+            return None
+    return args
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    sys.exit(main())

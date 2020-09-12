@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tileset version="1.4" tiledversion="1.4.2" name="map_tiles" tilewidth="8" tileheight="8" tilecount="1024" columns="32" objectalignment="topleft">
+ <image source="map_tiles.png" trans="000000" width="256" height="256"/>
+ <tile id="1" type="WALL"/>
+ <tile id="2" type="WALL"/>
+ <tile id="3" type="WALL"/>
+ <tile id="4" type="WALL"/>
+ <tile id="5" type="WALL"/>
+ <tile id="6" type="WALL"/>
+ <tile id="7" type="WALL"/>
+ <tile id="8" type="WALL"/>
+ <tile id="9" type="WALL"/>
+ <tile id="10" type="WALL"/>
+ <tile id="11" type="WALL"/>
+ <tile id="12" type="WALL"/>
+ <tile id="13" type="WALL"/>
+ <tile id="14" type="WALL"/>
+ <tile id="15" type="WALL"/>
+ <tile id="16" type="WALL"/>
+ <tile id="17" type="DOOR"/>
+ <tile id="18" type="DOOR"/>
+ <tile id="19" type="DOOR"/>
+ <tile id="20" type="DOOR"/>
+ <tile id="21" type="DOOR"/>
+ <tile id="22" type="DOOR"/>
+ <tile id="23" type="DOOR"/>
+ <tile id="24" type="DOOR"/>
+ <tile id="25" type="DOOR"/>
+ <tile id="26" type="DOOR"/>
+ <tile id="27" type="DOOR"/>
+ <tile id="28" type="DOOR"/>
+ <tile id="29" type="DOOR"/>
+ <tile id="30" type="DOOR"/>
+ <tile id="31" type="DOOR"/>
+ <tile id="32" type="SPAWN"/>
+ <tile id="33" type="SPAWN_WARRIOR"/>
+ <tile id="34" type="SPAWN_VALKYRIE"/>
+ <tile id="35" type="SPAWN_WIZARD"/>
+ <tile id="36" type="SPAWN_ELF"/>
+ <tile id="37" type="EXIT"/>
+ <tile id="38" type="TELEPORT"/>
+ <tile id="39" type="KEY"/>
+ <tile id="40" type="TREASURE"/>
+ <tile id="41" type="SMALL_FOOD"/>
+ <tile id="42" type="BIG_FOOD"/>
+</tileset>
