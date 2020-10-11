@@ -10,13 +10,15 @@ import pyxel
 
 import game
 import game.room
-import game.stats
 import game.assets
 import game.common
 import game.heroes
 import game.steers
 import game.sprite
 import game.pyxeltools
+
+from game.common import LIFE, LEVELS, LEVEL_COUNT,\
+    STATUS_SCREEN, GAME_OVER_SCREEN, GOOD_END_SCREEN
 
 
 _KEY_ = game.sprite.Raster(game.pyxeltools.MAP_ENTITIES, *game.pyxeltools.tile(game.common.OSD_KEY))
@@ -44,8 +46,8 @@ class NoLevel:
 
 class Level(game.GameState):
     '''Level controller'''
-    def __init__(self, next_state=None):
-        super(Level, self).__init__(next_state=next_state)
+    def __init__(self, parent):
+        super(Level, self).__init__(parent)
         self._event_handler_ = _discard_event_
         self.room = NoLevel()
         self._orchestrator_ = None
@@ -53,12 +55,12 @@ class Level(game.GameState):
     @property
     def player(self):
         '''Points to player data'''
-        return self.parent_game.player
+        return self.parent.player
 
     @property
     def identifier(self):
         '''Unique game identifier'''
-        return self.parent_game.identifier
+        return self.parent.identifier
 
     @property
     def orchestrator(self):
@@ -119,7 +121,14 @@ class Level(game.GameState):
 
     def end_current_room(self):
         '''End level'''
-        self.go_to_next_state()
+        if self.player.attribute[LIFE] <= 0:
+            self.go_to_state(GAME_OVER_SCREEN)
+        else:
+            if not self.player.attribute[LEVELS]:
+                self.go_to_state(GOOD_END_SCREEN)
+            else:
+                self.player.attribute[LEVEL_COUNT] += 1
+                self.go_to_state(STATUS_SCREEN)
 
     def spawn_player(self):
         '''Create a new player for this level'''

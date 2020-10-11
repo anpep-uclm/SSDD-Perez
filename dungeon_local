@@ -13,8 +13,8 @@ import argparse
 
 import game
 import game.common
+import game.screens
 import game.pyxeltools
-import game.tilescreen
 import game.orchestration
 
 
@@ -56,23 +56,12 @@ def main():
         return BAD_COMMAND_LINE
 
     game.pyxeltools.initialize()
-    gauntlet = game.Game(user_options.hero)
-    gauntlet.add_state(
-        game.tilescreen.TileScreen(next_state='level_1'), 'tile_screen', switch_to_state=True
-    )
-
-    room_count = 1
-    for room_file in user_options.LEVEL:
-        room = game.level.Level(next_state='stats_level_{}'.format(room_count))
-        gauntlet.add_state(room, 'level_{}'.format(room_count))
-        room.orchestrator = game.orchestration.RoomOrchestration(room_file)
-        gauntlet.add_state(
-            game.stats.StatsScreen(next_state='level_{}'.format(room_count + 1)),
-            'stats_level_{}'.format(room_count)
-        )
-        room_count += 1
-    room.next_state = 'tile_screen'
-
+    gauntlet = game.Game(user_options.hero, user_options.LEVEL)
+    gauntlet.add_state(game.screens.TileScreen, game.common.INITIAL_SCREEN)
+    gauntlet.add_state(game.screens.StatsScreen, game.common.STATUS_SCREEN)
+    gauntlet.add_state(game.screens.GameScreen, game.common.GAME_SCREEN)
+    gauntlet.add_state(game.screens.GameOverScreen, game.common.GAME_OVER_SCREEN)
+    gauntlet.add_state(game.screens.GoodEndScreen, game.common.GOOD_END_SCREEN)
     gauntlet.start()
 
     return EXIT_OK

@@ -22,6 +22,8 @@ TILE_ID = 'tile_id'
 KEYS = 'keys'
 SCORE = 'score'
 LIFE = 'life'
+LEVELS = 'levels'
+LEVEL_COUNT = 'level_count'
 
 # Map entities #
 
@@ -77,3 +79,10 @@ HEROES_SPAWN = {
     WIZARD: WIZARD_SPAWN,
     ELF: ELF_SPAWN
 }
+
+# Game states #
+INITIAL_SCREEN = 'initial_screen'
+STATUS_SCREEN = 'stats_screen'
+GAME_SCREEN = 'game_screen'
+GAME_OVER_SCREEN = 'gameover_screen'
+GOOD_END_SCREEN = 'goodend_screen'
