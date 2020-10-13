@@ -12,7 +12,7 @@ import uuid
 import pyxel
 
 import game.pyxeltools
-from game.common import LIFE, LEVEL_COUNT, LEVELS
+from game.common import LIFE, LEVEL_COUNT
 
 class GameState:
     '''Game state base class'''
@@ -42,12 +42,10 @@ class GameState:
 
 class PlayerData:
     '''Store player data accross the states of the game'''
-    def __init__(self, hero_class, levels, steer='Player1', initial_attributes=None):
-        levels.reverse()
+    def __init__(self, hero_class, steer='Player1', initial_attributes=None):
         self.attribute = {
             'hero_class': hero_class,
             'steer_id': steer,
-            LEVELS: levels,
             LEVEL_COUNT: 1
         }
         if initial_attributes:
@@ -62,13 +60,30 @@ class PlayerData:
         return self.attribute['steer_id']
 
 
+class DungeonMap:
+    '''Store a list of rooms'''
+    def __init__(self, levels):
+        self._levels_ = levels
+        self._levels_.reverse()
+
+    @property
+    def next_room(self):
+        if self._levels_:
+            return self._levels_.pop()
+
+    @property
+    def finished(self):
+        return not self._levels_
+
+
 class Game:
     '''This class wraps the game loop created by pyxel'''
     def __init__(self, hero_class, rooms):
         self._identifier_ = str(uuid.uuid4())
         self._states_ = {}
         self._current_state_ = None
-        self._player_ = PlayerData(hero_class, levels=rooms)
+        self._player_ = PlayerData(hero_class)
+        self._dungeon_ = DungeonMap(rooms)
 
     @property
     def identifier(self):
@@ -79,6 +94,11 @@ class Game:
     def player(self):
         '''Player data'''
         return self._player_
+
+    @property
+    def dungeon(self):
+        '''Dungeon data'''
+        return self._dungeon_
 
     def start(self):
         '''Start pyxel game loop'''

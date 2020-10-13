@@ -58,6 +58,11 @@ class Level(game.GameState):
         return self.parent.player
 
     @property
+    def dungeon(self):
+        '''Points to dungeon data'''
+        return self.parent.dungeon
+
+    @property
     def identifier(self):
         '''Unique game identifier'''
         return self.parent.identifier
@@ -124,7 +129,7 @@ class Level(game.GameState):
         if self.player.attribute[LIFE] <= 0:
             self.go_to_state(GAME_OVER_SCREEN)
         else:
-            if not self.player.attribute[LEVELS]:
+            if self.dungeon.finished:
                 self.go_to_state(GOOD_END_SCREEN)
             else:
                 self.player.attribute[LEVEL_COUNT] += 1
