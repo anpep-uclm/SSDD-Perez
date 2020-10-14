@@ -118,9 +118,9 @@ class GameScreen(game.GameState):
     '''Game screen'''
     def __init__(self, parent):
         super(GameScreen, self).__init__(parent)
-        room_file = self.parent.dungeon.next_room
+        room = self.parent.dungeon.next_room
         self.room = game.level.Level(self.parent)
-        self.room.orchestrator = game.orchestration.RoomOrchestration(room_file)
+        self.room.orchestrator = game.orchestration.RoomOrchestration(room)
 
         self.wake_up = self.room.wake_up
         self.suspend = self.room.suspend

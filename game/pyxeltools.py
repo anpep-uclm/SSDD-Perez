@@ -112,9 +112,16 @@ def clear_tilemap(tilemap_id):
 
 
 def load_json_map(jsonfile):
-    '''Load JSON file with a map into a pyxel tilemap bank. Return a list of objects in the map.'''
-    with open(jsonfile, 'r') as contents:
-        src_map = json.load(contents)
+    '''
+        Load JSON file with a map into a pyxel tilemap bank.
+        Also support parse the content of the file passed as string
+        Return a list of objects in the map.
+    '''
+    if os.path.exists(jsonfile):
+        with open(jsonfile, 'r') as contents:
+            src_map = json.load(contents)
+    else:
+        src_map = json.loads(jsonfile)
     map_data = src_map.get('data', None)
     map_name = src_map.get('room', os.path.basename(jsonfile))
     if not map_data:

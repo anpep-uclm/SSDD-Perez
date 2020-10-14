@@ -78,12 +78,12 @@ class DungeonMap:
 
 class Game:
     '''This class wraps the game loop created by pyxel'''
-    def __init__(self, hero_class, rooms):
+    def __init__(self, hero_class, dungeon):
         self._identifier_ = str(uuid.uuid4())
         self._states_ = {}
         self._current_state_ = None
         self._player_ = PlayerData(hero_class)
-        self._dungeon_ = DungeonMap(rooms)
+        self._dungeon_ = dungeon
 
     @property
     def identifier(self):

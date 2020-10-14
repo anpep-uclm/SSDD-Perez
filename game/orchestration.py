@@ -95,9 +95,9 @@ class TrackedGameObject:
 
 class RoomOrchestration:
     '''A running game instance'''
-    def __init__(self, room_file):
+    def __init__(self, room):
         self._identifier_ = None
-        self._map_name_ = room_file
+        self._room_ = room
         self._game_objects_ = {}
         self._map_objects_ = []
         self._event_target_ = __discard_event__
@@ -139,7 +139,7 @@ class RoomOrchestration:
         return self._game_objects_
 
     def _load_map_(self):
-        map_name, map_data = load_json_map(game.assets.search(self._map_name_))
+        map_name, map_data = load_json_map(game.assets.search(self._room_))
         # Get objects and replace by empty tile
         y = 0
         for row in map_data:

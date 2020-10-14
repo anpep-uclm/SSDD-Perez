@@ -56,7 +56,8 @@ def main():
         return BAD_COMMAND_LINE
 
     game.pyxeltools.initialize()
-    gauntlet = game.Game(user_options.hero, user_options.LEVEL)
+    dungeon = game.DungeonMap(user_options.LEVEL)
+    gauntlet = game.Game(user_options.hero, dungeon)
     gauntlet.add_state(game.screens.TileScreen, game.common.INITIAL_SCREEN)
     gauntlet.add_state(game.screens.StatsScreen, game.common.STATUS_SCREEN)
     gauntlet.add_state(game.screens.GameScreen, game.common.GAME_SCREEN)
