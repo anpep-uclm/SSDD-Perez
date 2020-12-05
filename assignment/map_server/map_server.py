@@ -50,7 +50,7 @@ class MapManagementI(IceGauntlet.MapManagement):
         :return The absolute path to the data directory
         """
         return os.path.abspath(
-            os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "data")
         )
 
     @staticmethod
