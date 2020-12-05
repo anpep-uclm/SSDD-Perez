@@ -6,6 +6,8 @@
     Handling room events and objects
 '''
 
+import logging
+
 from game.layer import TileMapLayer
 from game.camera import Camera
 from game.common import TILE_ID, DEFAULT_SPAWN
@@ -153,7 +155,11 @@ class Room:
         if (y not in range(len(self.block))) or (x not in range(len(self.block[0]))):
             return []
         identifier = self.block[y][x]
-        door = self._game_objects_[identifier]
+        try:
+            door = self._game_objects_[identifier]
+        except KeyError:
+            logging.debug('Malformed map, object not found: {}'.format(identifier))
+            return []
         if not isinstance(door, Door):
             return []
         doors = [door.identifier]

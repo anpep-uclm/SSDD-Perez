@@ -139,7 +139,7 @@ class RoomOrchestration:
         return self._game_objects_
 
     def _load_map_(self):
-        map_name, map_data = load_json_map(game.assets.search(self._room_))
+        map_name, map_data = load_json_map(self._room_)
         # Get objects and replace by empty tile
         y = 0
         for row in map_data:
