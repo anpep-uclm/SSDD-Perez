@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/env python3 "$(pwd)/assignment/map_client/map_client.py" -p "$1" -t "$2" remove "$3"
