@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-'''
+"""
 Script to run authentication user
-'''
+"""
 
 import os
 import sys
@@ -14,26 +14,26 @@ except ImportError:
     sys.exit(1)
 
 # Define command to request new token
-_COMMAND_ = '/usr/bin/env python3 ./assignment/auth_client/auth_client.py "%(user)s" "%(auth_proxy)s"'
+_COMMAND_ = './assignment/auth_client/auth_client.py "%(user)s" "%(auth_proxy)s"'
 
 # Message used by authentication client when asking for a password
-_PASSWORD_MESSAGE_ = 'password: '
+_PASSWORD_MESSAGE_ = "password: "
 _TIMEOUT_FOR_MESSAGE_ = 15
 
 # Get required arguments
 try:
+    # pylint: disable=W0632
     user, password, proxy = sys.argv[1:]
 except ValueError:
-    print('Command arguments: {} <user> <password> <proxy>'.format(
-        os.path.basename(sys.argv[0]))
+    print(
+        "Command arguments: {} <user> <password> <proxy>".format(
+            os.path.basename(sys.argv[0])
+        )
     )
     sys.exit(1)
 
 # Compose command
-final_command = _COMMAND_ % {
-    'user': user,
-    'auth_proxy': proxy
-}
+final_command = _COMMAND_ % {"user": user, "auth_proxy": proxy}
 
 # Run command
 proc = pexpect.spawn(final_command, echo=False)
@@ -48,9 +48,11 @@ if found == 0:
     proc.expect([pexpect.EOF])
 else:
     # Client execution failed
-    print('ERROR: authentication command does not ask for password after {} seconds'.format(
-        _TIMEOUT_FOR_MESSAGE_
-    ))
+    print(
+        "ERROR: authentication command does not ask for password after {} seconds".format(
+            _TIMEOUT_FOR_MESSAGE_
+        )
+    )
     sys.exit(1)
 
 # Show command output and exit
