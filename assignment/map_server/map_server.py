@@ -66,7 +66,8 @@ class MapManagementI(IceGauntlet.MapManagement):
             MapManagementI._get_data_dir(), f"room_{encoded_room_id}.json"
         )
 
-    def publish(self, token: str, room_data: str):
+    # pylint: disable=W0613
+    def publish(self, token: str, room_data: str, current=None):
         """
         Publishes a room. The client sends a room to the server and verifies
         the token against the authentication server.
@@ -96,7 +97,8 @@ class MapManagementI(IceGauntlet.MapManagement):
         with open(room_file_path, "w") as room_file:
             room_file.write(room_data)
 
-    def remove(self, token: str, room_name: str):
+    # pylint: disable=W0613
+    def remove(self, token: str, room_name: str, current=None):
         """
         Removes a room from the server
         :param token Authentication token
