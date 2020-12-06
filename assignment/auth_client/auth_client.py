@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # coding: utf8
 """
-auth_client: Authenticates against the provided server and obtains an auth token
+auth_client: Provides access to authentication server operations
 """
-
 
 import os
 import sys
@@ -21,52 +20,91 @@ Ice.loadSlice(
 # pylint: disable=C0413
 import IceGauntlet
 
+PASSWORD_SALT = """
+Our hard work by these
+words guarded please don’t steal
+(c)Apple Computer Inc
+""".strip()
 
 class Client(Ice.Application):
     """
     Authentication client
     """
 
+    @staticmethod
+    def _calculate_hash(password: str) -> str:
+        """
+        Calculates the hash for the provided password
+        :param password Password for which the hash will be calculated for
+        :return The hash calculated for this password
+        """
+        if password is None:
+            return None
+        hash = hashlib.sha256()
+        hash.update(PASSWORD_SALT.encode('utf8'))
+        hash.update(password.encode('utf8'))
+        return hash.hexdigest()
+
+
     def run(self, args: list) -> int:
         """
         Client entry point
-        :params args An argument list containing the communicator initialization parameters
+        :param args An argument list containing the communicator initialization parameters
         :return An exit code to the operating system
         """
-        user, proxy = args
+        proxy, action, user = args
         auth_proxy = self.communicator().stringToProxy(proxy)
 
-        logging.debug("resolving auth proxy: %s", auth_proxy)
+        logging.debug('resolving auth proxy: %s', auth_proxy)
         auth = IceGauntlet.AuthenticationPrx.checkedCast(auth_proxy)
         if not auth:
-            raise RuntimeError("invalid authentication proxy")
+            raise RuntimeError('invalid authentication proxy')
 
-        logging.info("auth proxy OK")
+        logging.info('auth proxy OK')
 
-        password = getpass.getpass("password: ")
-        logging.debug("authenticating user %s against server", user)
-
-        try:
-            print(
-                auth.getNewToken(
-                    user, hashlib.sha256(password.encode("utf8")).hexdigest()
-                ),
-                flush=True,
-            )
-        except IceGauntlet.Unauthorized:
-            print("error: unauthorized", file=sys.stderr)
+        if action == 'reset':
+            logging.debug('resetting password for user %s', user)
+            old_password = getpass.getpass('old password: ')
+            if not len(old_password.strip()):
+                logging.debug('no password provided')
+                old_password = None
+            new_password = getpass.getpass('new password: ')
+            try:
+                auth.changePassword(user, self._calculate_hash(old_password), self._calculate_hash(new_password))
+            except IceGauntlet.Unauthorized:
+                print('error: unauthorized', file=sys.stderr)
+                return 1
+        elif action == 'token':
+            logging.debug('obtaining token for user %s', user)
+            password = getpass.getpass('password: ')
+            try:
+                print(auth.getNewToken(user, self._calculate_hash(password)))
+            except IceGauntlet.Unauthorized:
+                print('error: unauthorized', file=sys.stderr)
+                return 1
+        else:
+            print('error: invalid action', file=sys.stderr)
             return 1
-
+        
         return 0
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v", action="store_true", help="displays debug traces"
     )
-    parser.add_argument("user", help="user name")
-    parser.add_argument("auth_proxy", help="authentication proxy string")
+    parser.add_argument("-p", help="authenticator proxy string")
+    parser.add_argument(
+        "action",
+        metavar="reset|token",
+        help="action to perform (reset, token)",
+    )
+    parser.add_argument(
+        "user",
+        metavar="user",
+        help="user name",
+    )
+
     arguments = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG)
@@ -76,4 +114,8 @@ if __name__ == "__main__":
         logging.disable(logging.CRITICAL)
 
     client = Client()
-    sys.exit(client.main([arguments.user, arguments.auth_proxy]))
+    sys.exit(
+        client.main(
+            [arguments.p, arguments.action, arguments.user]
+        )
+    )
