@@ -26,6 +26,7 @@ words guarded please don’t steal
 (c)Apple Computer Inc
 """.strip()
 
+
 class Client(Ice.Application):
     """
     Authentication client
@@ -40,11 +41,10 @@ class Client(Ice.Application):
         """
         if password is None:
             return None
-        hash = hashlib.sha256()
-        hash.update(PASSWORD_SALT.encode('utf8'))
-        hash.update(password.encode('utf8'))
-        return hash.hexdigest()
-
+        password_hash = hashlib.sha256()
+        password_hash.update(PASSWORD_SALT.encode("utf8"))
+        password_hash.update(password.encode("utf8"))
+        return password_hash.hexdigest()
 
     def run(self, args: list) -> int:
         """
@@ -55,38 +55,43 @@ class Client(Ice.Application):
         proxy, action, user = args
         auth_proxy = self.communicator().stringToProxy(proxy)
 
-        logging.debug('resolving auth proxy: %s', auth_proxy)
+        logging.debug("resolving auth proxy: %s", auth_proxy)
         auth = IceGauntlet.AuthenticationPrx.checkedCast(auth_proxy)
         if not auth:
-            raise RuntimeError('invalid authentication proxy')
+            raise RuntimeError("invalid authentication proxy")
 
-        logging.info('auth proxy OK')
+        logging.info("auth proxy OK")
 
-        if action == 'reset':
-            logging.debug('resetting password for user %s', user)
-            old_password = getpass.getpass('old password: ')
-            if not len(old_password.strip()):
-                logging.debug('no password provided')
+        if action == "reset":
+            logging.debug("resetting password for user %s", user)
+            old_password = getpass.getpass("old password: ")
+            if len(old_password.strip()) == 0:
+                logging.debug("no password provided")
                 old_password = None
-            new_password = getpass.getpass('new password: ')
+            new_password = getpass.getpass("new password: ")
             try:
-                auth.changePassword(user, self._calculate_hash(old_password), self._calculate_hash(new_password))
+                auth.changePassword(
+                    user,
+                    self._calculate_hash(old_password),
+                    self._calculate_hash(new_password),
+                )
             except IceGauntlet.Unauthorized:
-                print('error: unauthorized', file=sys.stderr)
+                print("error: unauthorized", file=sys.stderr)
                 return 1
-        elif action == 'token':
-            logging.debug('obtaining token for user %s', user)
-            password = getpass.getpass('password: ')
+        elif action == "token":
+            logging.debug("obtaining token for user %s", user)
+            password = getpass.getpass("password: ")
             try:
                 print(auth.getNewToken(user, self._calculate_hash(password)))
             except IceGauntlet.Unauthorized:
-                print('error: unauthorized', file=sys.stderr)
+                print("error: unauthorized", file=sys.stderr)
                 return 1
         else:
-            print('error: invalid action', file=sys.stderr)
+            print("error: invalid action", file=sys.stderr)
             return 1
-        
+
         return 0
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -114,8 +119,4 @@ if __name__ == "__main__":
         logging.disable(logging.CRITICAL)
 
     client = Client()
-    sys.exit(
-        client.main(
-            [arguments.p, arguments.action, arguments.user]
-        )
-    )
+    sys.exit(client.main([arguments.p, arguments.action, arguments.user]))
