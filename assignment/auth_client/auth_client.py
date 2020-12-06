@@ -69,9 +69,11 @@ if __name__ == "__main__":
     parser.add_argument("auth_proxy", help="authentication proxy string")
     arguments = parser.parse_args()
 
-    if arguments.v:
-        # configure logging so it writes to stdout
-        logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG)
+    if not arguments.v:
+        # disable all logging from levels CRITICAL and below, effectively
+        # disabling any kind of logging
+        logging.disable(logging.CRITICAL)
 
     client = Client()
     sys.exit(client.main([arguments.user, arguments.auth_proxy]))
