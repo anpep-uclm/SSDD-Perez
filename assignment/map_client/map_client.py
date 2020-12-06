@@ -61,6 +61,9 @@ class Client(Ice.Application):
         except IceGauntlet.RoomNotExists:
             print("error: no such room", file=sys.stderr)
             return 1
+        except IceGauntlet.InvalidRoomFormat:
+            print("error: invalid room format", file=sys.stderr)
+            return 1
 
         return 0
 

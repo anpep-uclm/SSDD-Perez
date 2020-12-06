@@ -2,6 +2,7 @@ module IceGauntlet {
   exception Unauthorized {};
   exception RoomAlreadyExists {};
   exception RoomNotExists {};
+  exception InvalidRoomFormat {};
 
   /**
    * Game interface (Client<->Server)
@@ -27,8 +28,9 @@ module IceGauntlet {
      * @param roomData JSON string representing the room
      * @throws Unauthorized if the authentication token is not valid
      * @throws RoomAlreadyExists if a room with that name is already present on the server
+     * @throws InvalidRoomFormat if the room data does not have the expected format
      */
-    void publish(string token, string roomData) throws Unauthorized, RoomAlreadyExists;
+    void publish(string token, string roomData) throws Unauthorized, RoomAlreadyExists, InvalidRoomFormat;
     
     /**
      * @brief Removes a room from the server

@@ -79,11 +79,13 @@ class MapManagementI(IceGauntlet.MapManagement):
 
         room_actual_data = json.loads(room_data)
         if set(room_actual_data.keys()) != set(("data", "room")):
-            raise Exception("invalid room format")
+            logging.warning("invalid format for room")
+            raise IceGauntlet.InvalidRoomFormat()
 
         room_name = room_actual_data["room"]
         if not isinstance(room_name, str):
-            raise Exception("invalid room name")
+            logging.warning("no room name present on room data")
+            raise IceGauntlet.InvalidRoomFormat()
 
         room_file_path = self._get_room_file(room_name)
         if os.path.isfile(room_file_path):
