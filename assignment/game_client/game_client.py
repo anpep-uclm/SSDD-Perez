@@ -8,7 +8,6 @@
 
 import os
 import sys
-import atexit
 import logging
 import argparse
 import Ice
@@ -35,10 +34,12 @@ import game.orchestration
 
 DEFAULT_HERO = game.common.HEROES[0]
 
+
 class RemoteDungeonMap:
     """
     Procedurally obtains levels from the remote server
     """
+
     def __init__(self, game_proxy: IceGauntlet.GamePrx):
         """
         Initializes the remote dungeon map
@@ -48,10 +49,16 @@ class RemoteDungeonMap:
 
     @property
     def next_room(self) -> str:
+        """
+        Gets the next room data
+        """
         return self._game_proxy.getRoom()
 
     @property
     def finished(self):
+        """
+        Returns whether or not the game is finished
+        """
         # online games never seem to come to an end!
         return False
 
@@ -76,7 +83,7 @@ class Client(Ice.Application):
             raise RuntimeError("invalid game proxy")
 
         logging.info("game proxy OK")
-            
+
         game.pyxeltools.initialize()
         dungeon = RemoteDungeonMap(game_prx)
         gauntlet = game.Game(hero, dungeon)
@@ -86,21 +93,19 @@ class Client(Ice.Application):
         gauntlet.add_state(
             game.screens.GameOverScreen, game.common.GAME_OVER_SCREEN
         )
-        gauntlet.add_state(game.screens.GoodEndScreen, game.common.GOOD_END_SCREEN)
+        gauntlet.add_state(
+            game.screens.GoodEndScreen, game.common.GOOD_END_SCREEN
+        )
         gauntlet.start()
 
         return 0
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("game_proxy", help="Proxy string for the game server")
     parser.add_argument(
-        "game_proxy",
-        help="Proxy string for the game server"
-    )
-    parser.add_argument(
-        "-v",
-        action="store_true",
-        help="displays debug traces"
+        "-v", action="store_true", help="displays debug traces"
     )
     parser.add_argument(
         "-p",
@@ -108,7 +113,7 @@ if __name__ == "__main__":
         default=DEFAULT_HERO,
         choices=game.common.HEROES,
         dest="hero",
-        help="Hero to play with"
+        help="Hero to play with",
     )
 
     arguments = parser.parse_args()
@@ -120,8 +125,4 @@ if __name__ == "__main__":
         logging.disable(logging.CRITICAL)
 
     client = Client()
-    sys.exit(
-        client.main(
-            [arguments.game_proxy, arguments.hero]
-        )
-    )
+    sys.exit(client.main([arguments.game_proxy, arguments.hero]))
