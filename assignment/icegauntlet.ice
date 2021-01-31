@@ -1,53 +1,64 @@
 module IceGauntlet {
+
   exception Unauthorized {};
   exception RoomAlreadyExists {};
   exception RoomNotExists {};
-  exception InvalidRoomFormat {};
+  exception WrongRoomFormat {};
 
-  /**
-   * Game interface (Client<->Server)
-   */
-  interface Game {
-    /**
-     * @brief Obtains the room data
-     * @return The JSON string representing the room
-     * @throws RoomNotExists 
-     */
-    string getRoom() throws RoomNotExists;
-  };
+  sequence<string> roomList;
   
-  /**
-   * Map management interface (Client<->Server)
-   */
-  interface MapManagement {
-    /**
-     * @brief Publishes a room
-     * @description The client sends a room to the server and verifies the
-     * token against the authentication server.
-     * @param token Authentication token
-     * @param roomData JSON string representing the room
-     * @throws Unauthorized if the authentication token is not valid
-     * @throws RoomAlreadyExists if a room with that name is already present on the server
-     * @throws InvalidRoomFormat if the room data does not have the expected format
-     */
-    void publish(string token, string roomData) throws Unauthorized, RoomAlreadyExists, InvalidRoomFormat;
-    
-    /**
-     * @brief Removes a room from the server
-     * @param token Authentication token
-     * @param roomName Name of the room to be removed
-     * @throws Unauthorized if the authentication token is not valid
-     * @throws RoomNotExists if no room with the specified name has been published
-     */
-    void remove(string token, string roomName) throws Unauthorized, RoomNotExists;
+  struct Actor {
+    string actorId;
+    string attributes;
   };
 
-  /**
-   * Authentication interface (Client<->AuthServer)
-   */
+  struct Item {
+    string itemId;
+    int itemType;
+    int positionX;
+    int positionY;
+  };
+
+  sequence<Actor> cast;
+  sequence<Item> objects;
+  sequence<byte> bytes;
+
   interface Authentication {
     void changePassword(string user, string currentPassHash, string newPassHash) throws Unauthorized;
     string getNewToken(string user, string passwordHash) throws Unauthorized;
-    bool isValid(string token);
+    string getOwner(string token) throws Unauthorized;
   };
+
+  interface RoomManager {
+    void publish(string token, string roomData) throws Unauthorized, RoomAlreadyExists, WrongRoomFormat;
+    void remove(string token, string roomName) throws Unauthorized, RoomNotExists;
+    roomList availableRooms();
+    string getRoom(string roomName) throws RoomNotExists;
+  };
+
+  // Event channel for Room Manager synchronization
+  interface RoomManagerSync {
+    void hello(RoomManager* manager, string managerId);
+    void announce(RoomManager* manager, string managerId);
+    void newRoom(string roomName, string managerId);
+    void removedRoom(string roomName);
+  };
+
+  // Event channel for DungeonArea synchronization
+  interface DungeonAreaSync {
+    void fireEvent(bytes event, string senderId);
+  };
+
+  interface DungeonArea {
+    string getEventChannel();
+    string getMap();
+    cast getActors();
+    objects getItems();
+    DungeonArea* getNextArea();
+  };
+
+  interface Dungeon {
+    DungeonArea* getEntrance() throws RoomNotExists;
+  };
+
 };

@@ -1,63 +1,70 @@
 #!/usr/bin/env python3
+# coding: utf8
 
 """
-Script to run authentication user
+get_new_token: Obtains a new authentication token
 """
 
 import os
 import sys
+import hashlib
+import Ice
 
-try:
-    import pexpect
-except ImportError:
-    print('Required library "pexpect" not exists. Install with pip and try again')
-    sys.exit(1)
-
-# Define command to request new token
-_COMMAND_ = (
-    "/usr/bin/env python3 assignment/auth_client/auth_client.py"
-    + ' -p "%(auth_proxy)s" token "%(user)s"'
+Ice.loadSlice(
+    f"{os.path.dirname(os.path.realpath(__file__))}/assignment/icegauntlet.ice"
 )
 
-# Message used by authentication client when asking for a password
-_PASSWORD_MESSAGE_ = "password: "
-_TIMEOUT_FOR_MESSAGE_ = 15
+# pylint: disable=E0401
+# pylint: disable=C0413
+import IceGauntlet
 
-# Get required arguments
-try:
-    # pylint: disable=W0632
-    user, password, proxy = sys.argv[1:]
-except ValueError:
-    print(
-        "Command arguments: {} <user> <password> <proxy>".format(
-            os.path.basename(sys.argv[0])
-        )
-    )
-    sys.exit(1)
+PASSWORD_SALT = """
+Our hard work by these
+words guarded please don’t steal
+(c)Apple Computer Inc
+""".strip()
 
-# Compose command
-final_command = _COMMAND_ % {"user": user, "auth_proxy": proxy}
 
-# Run command
-proc = pexpect.spawn(final_command, echo=False)
-# Wait for client to ask for password
-found = proc.expect(
-    [_PASSWORD_MESSAGE_, pexpect.TIMEOUT, pexpect.EOF], timeout=_TIMEOUT_FOR_MESSAGE_
-)
-if found == 0:
-    # Enter password
-    proc.sendline(password)
-    # Wait end
-    proc.expect([pexpect.EOF])
-else:
-    # Client execution failed
-    print(
-        "ERROR: authentication command does not ask for password after {} seconds".format(
-            _TIMEOUT_FOR_MESSAGE_
-        )
-    )
-    sys.exit(1)
+class Client(Ice.Application):
+    """
+    Authentication client
+    """
 
-# Show command output and exit
-print(proc.before.decode().strip())
-sys.exit(0)
+    @staticmethod
+    def _calculate_hash(password: str) -> str:
+        """
+        Calculates the hash for the provided password
+        :param password Password for which the hash will be calculated for
+        :return The hash calculated for this password
+        """
+        if password is None:
+            return None
+        password_hash = hashlib.sha256()
+        password_hash.update(PASSWORD_SALT.encode("utf8"))
+        password_hash.update(password.encode("utf8"))
+        return password_hash.hexdigest()
+
+    def run(self, args: list) -> int:
+        """
+        Client entry point
+        :param args An argument list containing the communicator initialization parameters
+        :return An exit code to the operating system
+        """
+        [user, password, proxy] = args[1:]
+        auth_proxy = self.communicator().stringToProxy(proxy)
+
+        auth = IceGauntlet.AuthenticationPrx.checkedCast(auth_proxy)
+        if not auth:
+            raise RuntimeError("invalid authentication proxy")
+
+        try:
+            print(auth.getNewToken(user, self._calculate_hash(password)))
+        except IceGauntlet.Unauthorized:
+            print("error: unauthorized", file=sys.stderr)
+            return 1
+
+        return 0
+
+if __name__ == "__main__":
+    app = Client()
+    sys.exit(app.main(sys.argv))

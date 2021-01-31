@@ -1,3 +1,0 @@
-#!/bin/sh
-/usr/bin/env python3 "$(pwd)/assignment/map_server/map_server.py" \
-    --config="$(pwd)/assignment/map_server/map_server.conf" "$@"    

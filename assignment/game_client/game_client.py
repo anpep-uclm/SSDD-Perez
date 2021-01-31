@@ -40,19 +40,19 @@ class RemoteDungeonMap:
     Procedurally obtains levels from the remote server
     """
 
-    def __init__(self, game_proxy: IceGauntlet.GamePrx):
+    def __init__(self, room_manager_proxy: IceGauntlet.RoomManagerPrx):
         """
         Initializes the remote dungeon map
-        :param game_proxy An instance of the Game proxy
+        :param room_manager_proxy An instance of the Game proxy
         """
-        self._game_proxy = game_proxy
+        self._room_manager_proxy = room_manager_proxy
 
     @property
     def next_room(self) -> str:
         """
         Gets the next room data
         """
-        return self._game_proxy.getRoom()
+        return self._room_manager_proxy.getRoom()
 
     @property
     def finished(self):
@@ -75,17 +75,17 @@ class Client(Ice.Application):
         :return An exit code to the operating system
         """
         proxy, hero = args
-        game_proxy = self.communicator().stringToProxy(proxy)
+        room_manager_proxy = self.communicator().stringToProxy(proxy)
 
-        logging.debug("resolving game proxy: %s", game_proxy)
-        game_prx = IceGauntlet.GamePrx.checkedCast(game_proxy)
+        logging.debug("resolving game proxy: %s", room_manager_proxy)
+        room_manager_prx = IceGauntlet.RoomManagerPrx.checkedCast(room_manager_proxy)
         if not game:
             raise RuntimeError("invalid game proxy")
 
         logging.info("game proxy OK")
 
         game.pyxeltools.initialize()
-        dungeon = RemoteDungeonMap(game_prx)
+        dungeon = RemoteDungeonMap(room_manager_prx)
         gauntlet = game.Game(hero, dungeon)
         gauntlet.add_state(game.screens.TileScreen, game.common.INITIAL_SCREEN)
         gauntlet.add_state(game.screens.StatsScreen, game.common.STATUS_SCREEN)
@@ -103,7 +103,7 @@ class Client(Ice.Application):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("game_proxy", help="Proxy string for the game server")
+    parser.add_argument("room_manager_proxy", help="Proxy string for the game server")
     parser.add_argument(
         "-v", action="store_true", help="displays debug traces"
     )
@@ -125,4 +125,4 @@ if __name__ == "__main__":
         logging.disable(logging.CRITICAL)
 
     client = Client()
-    sys.exit(client.main([arguments.game_proxy, arguments.hero]))
+    sys.exit(client.main([arguments.room_manager_proxy, arguments.hero]))

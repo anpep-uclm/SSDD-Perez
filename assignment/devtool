@@ -1,0 +1,206 @@
+#!/bin/bash
+#
+#  devtool(1) -- Aids in the development of the L2 assignment
+#  Written by Ángel Pérez <angel.perez7@alu.uclm.es>
+#
+#  This source code is subject to the terms found in the LICENSE file located
+#  at the top-level directory of the source tree
+#
+
+PROGNAME="devtool"
+
+set -e
+
+print_usage()
+{
+    echo "usage: $PROGNAME lint"
+    echo "       $PROGNAME start"
+    echo "       $PROGNAME stop"
+    echo "       $PROGNAME play"
+    echo "       $PROGNAME logcat"
+    echo "       $PROGNAME proxy"
+    echo "       $PROGNAME auth_token"
+    echo "       $PROGNAME auth_reset"
+    echo "       $PROGNAME start_icegrid"
+    echo "       $PROGNAME stop_icegrid"
+}
+
+start_service()
+{
+    echo -e "[*] starting service \`$1'"
+    stdout_file="/tmp/devtool_service_logs_$1"
+    touch $stdout_file
+    /bin/bash -c "cd .. && ./run_$* -v > $stdout_file 2>&1" &
+    pid=$!
+    proxy_file="/tmp/devtool_service_proxies_$1"
+    touch $proxy_file
+    (tail -f -n1 $stdout_file | grep -xm1 "^\".*" | tr -d '"') > $proxy_file
+    proxy="$(cat $proxy_file)"
+    echo -e "[*]  proxy string: $proxy"
+    echo -e "\x1b[32m[+]  service $1[$pid] is running\x1b[0m"
+}
+
+stop_service()
+{
+    echo -e "[*] stopping service \`$1'"
+    set +e
+    pids=$(pgrep -f "$1.py")
+    set -e
+    if [ -z "$pids" ]
+    then
+        echo -e "\x1b[31m[-]  no instance of this service is running\x1b[0m"
+        return
+    fi
+    for pid in ${pids[@]}
+    do
+        kill -TERM $pid
+        echo -e "\x1b[32m[+]  service $1[$pid] has been stopped\x1b[0m"
+    done
+    rm -f "/tmp/devtool_service_logs_$1" "/tmp/devtool_service_proxies_$1"
+}
+
+logcat()
+{
+    if [ -z "$1" ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no service name specified"
+        exit 1
+    fi
+    log_file="/tmp/devtool_service_logs_$1"
+    if [ ! -f $log_file ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no logs found for service \`$1'"
+        exit 1
+    fi
+    tail -f -n +1 $log_file
+}
+
+proxy()
+{
+    if [ -z "$1" ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no service name specified"
+        exit 1
+    fi
+    proxy_file="/tmp/devtool_service_proxies_$1"
+    if [ ! -f $proxy_file ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no active proxy found for service \`$1'"
+        exit 1
+    fi
+    cat $proxy_file
+}
+
+auth_reload()
+{
+    pid=$(pgrep -f auth_server.py)
+    kill -USR1 $pid
+}
+
+auth_reset()
+{
+    if [ -z "$1" ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no user name specified"
+        exit 1
+    fi
+    proxy_file="/tmp/devtool_service_proxies_auth_server"
+    if [ ! -f $proxy_file ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no active proxy found for service \`auth_server'"
+        exit 1
+    fi
+    /usr/bin/env python3 ./auth_client/auth_client.py -p "$(cat $proxy_file)" reset "$1"
+}
+
+auth_token()
+{
+    if [ -z "$1" ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no user name specified"
+        exit 1
+    fi
+    proxy_file="/tmp/devtool_service_proxies_auth_server"
+    if [ ! -f $proxy_file ]
+    then
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: no active proxy found for service \`auth_server'"
+        exit 1
+    fi
+    /usr/bin/env python3 ./auth_client/auth_client.py -p "$(cat $proxy_file)" token "$1"
+}
+
+start_icegrid()
+{
+    mkdir -p /tmp/db/node{1,2}/{servers,distrib/IceGauntlet}
+    mkdir -p /tmp/db/registry
+    icegridnode --Ice.Config=deploy/node1.config &
+    icegridnode --Ice.Config=deploy/node2.config &
+}
+
+stop_icegrid()
+{
+    set +e
+    kill -TERM $(pgrep -f deploy/node1.config)
+    kill -TERM $(pgrep -f deploy/node2.config)
+    set -e
+}
+
+case "$1" in
+    lint)
+        FILES=$(find -type f -name *.py)
+        for f in $FILES
+        do
+            if [[ "$f" == "./auth_server/auth_server.py" ]];
+            then
+                # ignore lint errors from auth_server (3rd party code)
+                continue
+            fi
+            echo -e "[*] evaluating $f"
+            black -q "$f" > /dev/null
+            pylint "$f"
+        done
+        ;;
+    start)
+        start_service "auth_server"
+        #start_service "game_server"
+        start_service "map_server" "\"$(cat /tmp/devtool_service_proxies_auth_server)\""
+        exit 0
+        ;;
+    stop)
+        stop_service "auth_server"
+        stop_service "map_server"
+        exit 0
+        ;;
+    play)
+        if [ ! -f "/tmp/devtool_service_proxies_game_server" ]
+        then
+            >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: game server is not running"
+            exit 1
+        fi
+        proxy=$(cat /tmp/devtool_service_proxies_game_server)
+        (cd .. && /bin/sh -c "./run_game $proxy")
+        exit 0
+        ;;
+    logcat|proxy)
+        $1 $2
+        exit 0
+        ;;
+    auth_token)
+        auth_reload
+        auth_token $2
+        exit 0
+        ;;
+    auth_reset)
+        auth_reload
+        auth_reset $2
+        exit 0
+        ;;
+    start_icegrid|stop_icegrid)
+        $1
+        exit 0
+        ;;
+    *)
+        print_usage
+        >&2 echo -e "$PROGNAME: \x1b[31merror\x1b[0m: unrecognized command \`$1'"
+        exit 0
+esac

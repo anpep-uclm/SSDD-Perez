@@ -20,7 +20,7 @@ Ice.loadSlice(
 import IceGauntlet
 
 
-class GameI(IceGauntlet.Game):
+class RoomManagerI(IceGauntlet.RoomManager):
     # pylint: disable=R0903
 
     """
@@ -83,8 +83,8 @@ class Server(Ice.Application):
         :params args An argument list passed by the communicator initialization
         :return An exit code to the operating system
         """
-        servant = GameI()
-        adapter = self.communicator().createObjectAdapter("GameAdapter")
+        servant = RoomManagerI()
+        adapter = self.communicator().createObjectAdapter("RoomManagerAdapter")
         proxy = adapter.add(
             servant, self.communicator().stringToIdentity("default")
         )

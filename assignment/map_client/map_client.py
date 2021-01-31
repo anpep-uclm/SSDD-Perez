@@ -31,27 +31,52 @@ class Client(Ice.Application):
         :params args An argument list containing the communicator initialization parameters
         :return An exit code to the operating system
         """
-        token, proxy, action, data = args
-        if action not in ("publish", "remove"):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "-v", action="store_true", help="displays debug traces"
+        )
+        parser.add_argument("-t", help="authentication token")
+        parser.add_argument("-p", help="maps proxy string")
+
+        parser.add_argument(
+            "action",
+            metavar="publish|remove",
+            help="action to perform (publish, remove)",
+        )
+        parser.add_argument(
+            "data",
+            metavar="room_name|room_data",
+            help="data associated with the action",
+        )
+
+        arguments = parser.parse_args(args[1:])
+
+        logging.basicConfig(level=logging.DEBUG)
+        if not arguments.v:
+            # disable all logging from levels CRITICAL and below, effectively
+            # disabling any kind of logging
+            logging.disable(logging.CRITICAL)
+
+        if arguments.action not in ("publish", "remove"):
             raise RuntimeError(
                 "invalid action (supported actions are publish and remove)"
             )
 
-        maps_proxy = self.communicator().stringToProxy(proxy)
+        maps_proxy = self.communicator().stringToProxy(arguments.p)
 
         logging.debug("resolving maps proxy: %s", maps_proxy)
-        maps = IceGauntlet.MapManagementPrx.checkedCast(maps_proxy)
+        maps = IceGauntlet.RoomManagerPrx.checkedCast(maps_proxy)
         if not maps:
             raise RuntimeError("invalid maps proxy")
 
         logging.info("maps proxy OK")
 
         try:
-            if action == "publish":
-                with open(data, "r") as room_file:
-                    maps.publish(token, room_file.read())
-            elif action == "remove":
-                maps.remove(token, data)
+            if arguments.action == "publish":
+                with open(arguments.data, "r") as room_file:
+                    maps.publish(arguments.t, room_file.read())
+            elif arguments.action == "remove":
+                maps.remove(arguments.t, arguments.data)
         except IceGauntlet.Unauthorized:
             print("error: unauthorized", file=sys.stderr)
             return 1
@@ -61,7 +86,7 @@ class Client(Ice.Application):
         except IceGauntlet.RoomNotExists:
             print("error: no such room", file=sys.stderr)
             return 1
-        except IceGauntlet.InvalidRoomFormat:
+        except IceGauntlet.WrongRoomFormat:
             print("error: invalid room format", file=sys.stderr)
             return 1
 
@@ -69,35 +94,6 @@ class Client(Ice.Application):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v", action="store_true", help="displays debug traces"
-    )
-    parser.add_argument("-t", help="authentication token")
-    parser.add_argument("-p", help="maps proxy string")
+    app = Client()
+    sys.exit(app.main(sys.argv))
 
-    parser.add_argument(
-        "action",
-        metavar="publish|remove",
-        help="action to perform (publish, remove)",
-    )
-    parser.add_argument(
-        "data",
-        metavar="room_name|room_data",
-        help="data associated with the action",
-    )
-
-    arguments = parser.parse_args()
-
-    logging.basicConfig(level=logging.DEBUG)
-    if not arguments.v:
-        # disable all logging from levels CRITICAL and below, effectively
-        # disabling any kind of logging
-        logging.disable(logging.CRITICAL)
-
-    client = Client()
-    sys.exit(
-        client.main(
-            [arguments.t, arguments.p, arguments.action, arguments.data]
-        )
-    )

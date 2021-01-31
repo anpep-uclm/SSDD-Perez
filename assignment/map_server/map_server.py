@@ -12,6 +12,7 @@ import hashlib
 import base64
 import json
 import Ice
+import IceStorm
 
 Ice.loadSlice(
     f"{os.path.dirname(os.path.realpath(__file__))}/../icegauntlet.ice"
@@ -20,8 +21,25 @@ Ice.loadSlice(
 # pylint: disable=C0413
 import IceGauntlet
 
+class RoomManagerSyncI(IceGauntlet.RoomManagerSync):
+    def __init__(self):
+        self._room_managers = {}
+        pass
 
-class MapManagementI(IceGauntlet.MapManagement):
+    def hello(self, room_manager, manager_id: str):
+        logging.info('room manager %s registered', manager_id)
+        self._room_managers[manager_id] = room_manager
+
+    def announce(self, room_manager, manager_id: str):
+        pass
+
+    def newRoom(self, room_name: str, manager_id: str):
+        pass
+
+    def removedRoom(self, room_name, manager_id: str):
+        pass
+
+class RoomManagerI(IceGauntlet.RoomManager):
     """
     Map management servant
     """
@@ -56,16 +74,19 @@ class MapManagementI(IceGauntlet.MapManagement):
         )
 
     @staticmethod
-    def _get_room_file(room_name: str) -> str:
+    def _get_room_file(user_name: str, room_name: str) -> str:
         """
         Obtains the path of the file associated to a room
+        :param user_name Name of the owner
         :param room_name Name of the room
         :return The absolute path to the room file path
         """
         room_id = hashlib.sha256(room_name.encode("utf8")).digest()
+        user_id = hashlib.sha1(user_name.encode("utf8")).digest()
         encoded_room_id = base64.urlsafe_b64encode(room_id).decode("utf8")
+        encoded_user_id = base64.urlsafe_b64encode(user_id).decode("utf8")
         return os.path.join(
-            MapManagementI._get_data_dir(), f"room_{encoded_room_id}.json"
+            RoomManagerI._get_data_dir(), f"room_{encoded_user_id}_{encoded_room_id}.json"
         )
 
     # pylint: disable=W0613
@@ -76,21 +97,22 @@ class MapManagementI(IceGauntlet.MapManagement):
         :param token Authentication token
         :param room_data JSON string representing the room
         """
-        if not self._auth.isValid(token):
+        try:
+            user_name = self._auth.getOwner(token)
+        except IceGauntlet.Unauthorized:
             logging.warning("invalid token: %s", token)
-            raise IceGauntlet.Unauthorized()
-
+            raise IceGauntlet.Unauthorized
         room_actual_data = json.loads(room_data)
-        if set(room_actual_data.keys()) != set(("data", "room")):
+        if set(room_actual_data.keys()) != {"data", "room"}:
             logging.warning("invalid format for room")
-            raise IceGauntlet.InvalidRoomFormat()
+            raise IceGauntlet.WrongRoomFormat()
 
         room_name = room_actual_data["room"]
         if not isinstance(room_name, str):
             logging.warning("no room name present on room data")
-            raise IceGauntlet.InvalidRoomFormat()
+            raise IceGauntlet.WrongRoomFormat()
 
-        room_file_path = self._get_room_file(room_name)
+        room_file_path = self._get_room_file(user_name, room_name)
         if os.path.isfile(room_file_path):
             logging.warning("room %s already exists", room_name)
             raise IceGauntlet.RoomAlreadyExists()
@@ -106,11 +128,13 @@ class MapManagementI(IceGauntlet.MapManagement):
         :param token Authentication token
         :param room_name Name of the room to be removed
         """
-        if not self._auth.isValid(token):
+        try:
+            user_name = self._auth.getOwner(token)
+        except IceGauntlet.Unauthorized:
             logging.warning("invalid token: %s", token)
-            raise IceGauntlet.Unauthorized()
+            raise IceGauntlet.Unauthorized
 
-        room_file_path = self._get_room_file(room_name)
+        room_file_path = self._get_room_file(user_name, room_name)
         if not os.path.isfile(room_file_path):
             logging.warning("room %s does not exist", room_name)
             raise IceGauntlet.RoomNotExists()
@@ -131,7 +155,7 @@ class Server(Ice.Application):
         :return An exit code to the operating system
         """
         # the first argument is always the authenticator proxy string
-        auth_proxy = self.communicator().stringToProxy(args[0])
+        auth_proxy = self.communicator().stringToProxy(args[1])
 
         logging.debug("resolving auth proxy: %s", auth_proxy)
         auth = IceGauntlet.AuthenticationPrx.checkedCast(auth_proxy)
@@ -139,19 +163,23 @@ class Server(Ice.Application):
             raise RuntimeError("invalid authentication proxy")
 
         logging.info("auth proxy OK")
-        servant = MapManagementI(auth)
-        adapter = self.communicator().createObjectAdapter(
-            "MapManagementAdapter"
-        )
-        proxy = adapter.add(
-            servant, self.communicator().stringToIdentity("default")
-        )
 
-        adapter.addDefaultServant(servant, "")
-        adapter.activate()
+        manager_servant, event_servant = RoomManagerI(auth), RoomManagerSyncI()
+        manager_adapter = self.communicator().createObjectAdapter("RoomManagerAdapter")
+        event_adapter = self.communicator().createObjectAdapter("RoomManagerSyncAdapter")
+        identity = self.communicator().getProperties().getProperty('Identity')
 
-        logging.debug("adapter ready (servant proxy: %s)", proxy)
-        print(f'"{proxy}"', flush=True)
+        manager_proxy = manager_adapter.add(manager_servant, self.communicator().stringToIdentity(identity))
+        event_proxy = event_adapter.addWithUUID(event_servant)
+
+        manager_adapter.addDefaultServant(manager_servant, "")
+        manager_adapter.activate()
+
+        event_adapter.addDefaultServant(event_servant, "")
+        event_adapter.activate()
+
+        logging.debug('manager servant: %s', manager_proxy)
+        logging.debug('event servant: %s', event_proxy)
 
         logging.debug("entering server loop")
         self.shutdownOnInterrupt()
@@ -162,19 +190,6 @@ class Server(Ice.Application):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v", action="store_true", help="displays debug traces"
-    )
-    parser.add_argument("auth_proxy", help="authentication proxy string")
-    parser.add_argument("--config", help="ZeroC Ice config file")
-    arguments = parser.parse_args()
-
     logging.basicConfig(level=logging.DEBUG)
-    if not arguments.v:
-        # disable all logging from levels CRITICAL and below, effectively
-        # disabling any kind of logging
-        logging.disable(logging.CRITICAL)
-
-    server = Server()
-    sys.exit(server.main([arguments.auth_proxy], configFile=arguments.config))
+    app = Server()
+    sys.exit(app.main(sys.argv))
